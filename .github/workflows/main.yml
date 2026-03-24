@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write  # Supaya bisa push file ke repo
+
 jobs:
   generate-ino:
     runs-on: ubuntu-latest
@@ -13,13 +16,19 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Create INO file
+      - name: Create INO file from CPP
         run: |
-          # Ambil nama repo sebagai nama folder .ino (opsional)
+          # Nama file .ino yang dihasilkan
           INO_NAME="ESP32_Game"
-          # Buat file .ino di root
-          cp src.ino.cpp "$INO_NAME.ino"
-          echo "File $INO_NAME.ino created in root repo"
+          
+          # Copy file cpp di root ke .ino di root
+          if [ -f src.ino.cpp ]; then
+            cp src.ino.cpp "$INO_NAME.ino"
+            echo "File $INO_NAME.ino created in root repo"
+          else
+            echo "src.ino.cpp not found!"
+            exit 1
+          fi
 
       - name: Commit and push INO
         run: |
@@ -27,4 +36,4 @@ jobs:
           git config --global user.email "actions@github.com"
           git add *.ino
           git commit -m "Auto-generate INO from src.ino.cpp" || echo "No changes to commit"
-          git push
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
