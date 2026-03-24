@@ -1,0 +1,30 @@
+name: Generate INO
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  generate-ino:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create INO file
+        run: |
+          # Ambil nama repo sebagai nama folder .ino (opsional)
+          INO_NAME="ESP32_Game"
+          # Buat file .ino di root
+          cp src.ino.cpp "$INO_NAME.ino"
+          echo "File $INO_NAME.ino created in root repo"
+
+      - name: Commit and push INO
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add *.ino
+          git commit -m "Auto-generate INO from src.ino.cpp" || echo "No changes to commit"
+          git push
