@@ -1,4 +1,4 @@
-name: Generate INO
+name: Build ESP32 BIN
 
 on:
   push:
@@ -6,34 +6,51 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Supaya bisa push file ke repo
+  contents: read
 
 jobs:
-  generate-ino:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Create INO file from CPP
-        run: |
-          # Nama file .ino yang dihasilkan
-          INO_NAME="ESP32_Game"
-          
-          # Copy file cpp di root ke .ino di root
-          if [ -f src.ino.cpp ]; then
-            cp src.ino.cpp "$INO_NAME.ino"
-            echo "File $INO_NAME.ino created in root repo"
-          else
-            echo "src.ino.cpp not found!"
-            exit 1
-          fi
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
 
-      - name: Commit and push INO
+      - name: Install PlatformIO
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add *.ino
-          git commit -m "Auto-generate INO from src.ino.cpp" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Prepare INO
+        run: |
+          # Nama project ESP32
+          PROJECT_NAME="ESP32_Game"
+          mkdir -p $PROJECT_NAME/src
+          
+          # Gabung semua .cpp di root menjadi main.ino
+          cat *.cpp > $PROJECT_NAME/src/main.ino
+          
+          # Buat file platformio.ini
+          cat <<EOT > $PROJECT_NAME/platformio.ini
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+EOT
+
+      - name: Build BIN
+        run: |
+          cd ESP32_Game
+          pio run
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ESP32-BIN
+          path: ESP32_Game/.pio/build/esp32dev/firmware.bin
